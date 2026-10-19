@@ -269,12 +269,12 @@ export async function parseReceipt(
       "[parseReceipt] GEMINI_API_KEY format unexpected (should usually start with 'AIza')."
     );
   }
-  const dynamicCandidates = cachedModel
+  const dynamicCandidates = (cachedModel
     ? [
         cachedModel.model,
         ...MODEL_CANDIDATES.filter((m) => m !== cachedModel!.model),
       ]
-    : MODEL_CANDIDATES.slice();
+    : MODEL_CANDIDATES.slice()).slice(0, 2);
   if (DEBUG_PARSE) {
     console.log(
       `[parseReceipt] REST mode; preferred version=${GEMINI_API_VERSION}; cached=${
@@ -407,11 +407,14 @@ async function generateViaRest(
       ],
       generationConfig: { temperature: 0.1 },
     };
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20_000);
     try {
       const resp = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        signal: controller.signal,
       });
       if (!resp.ok) {
         let errorPayload: any = undefined;
@@ -468,6 +471,8 @@ async function generateViaRest(
       if (DEBUG_PARSE)
         console.warn(`[generateViaRest] Error calling ${ver} ${model}:`, e);
       continue;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
   throw lastErr || new Error("All versions failed");

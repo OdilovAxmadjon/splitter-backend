@@ -306,7 +306,7 @@ router.get(
   authenticateToken,
   async (req: AuthRequest, res: Response) => {
     try {
-      const q = String(req.query.q || "").trim();
+      const q = String(req.query.q || "").trim().replace(/^@/, "").replace(/^user(?=#)/i, "");
       console.log("GET /friends/search q:", q);
       if (!q) {
         console.log("GET /friends/search empty query");
@@ -361,13 +361,16 @@ router.post(
       // Correctly parse unique ID as a string to avoid JSON errors.
       // Body is parsed by express.json() in server.ts, we strictly require a string here.
       const { uniqueId } = req.body ?? {};
-      console.log("POST /friends/request body:", { uniqueId });
-      if (typeof uniqueId !== "string" || !uniqueId.trim()) {
+      const normalizedUniqueId = typeof uniqueId === "string"
+        ? uniqueId.trim().replace(/^@/, "").replace(/^user(?=#)/i, "")
+        : uniqueId;
+      console.log("POST /friends/request body:", { uniqueId: normalizedUniqueId });
+      if (typeof normalizedUniqueId !== "string" || !normalizedUniqueId) {
         return res.status(400).json({ error: "uniqueId is required" });
       }
 
       const target = await prisma.user.findUnique({
-        where: { uniqueId: uniqueId.trim() },
+        where: { uniqueId: normalizedUniqueId },
         select: { id: true, uniqueId: true, username: true },
       });
       if (!target) return res.status(404).json({ error: "User not found" });
