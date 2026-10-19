@@ -306,7 +306,7 @@ router.get(
   authenticateToken,
   async (req: AuthRequest, res: Response) => {
     try {
-      const q = String(req.query.q || "").trim();
+      const q = String(req.query.q || "").trim().replace(/^@/, "").replace(/^user(?=#)/i, "");
       console.log("GET /friends/search q:", q);
       if (!q) {
         console.log("GET /friends/search empty query");
